@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Local design exploration (not part of the live app)
+mockups/
+
+# Coursework / private docs (kept out of the public repo)
+*.docx
+~$*

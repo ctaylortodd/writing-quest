@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Writing Quest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ HEADER ============ -->
+  <header class="app-header">
+    <div class="brand"><span class="badge">✏️</span> Writing Quest</div>
+    <nav class="main-nav" aria-label="Main">
+      <button class="nav-btn" data-view="home" aria-current="true">Home</button>
+      <button class="nav-btn" data-view="write">Write</button>
+      <button class="nav-btn" data-view="progress">My Progress</button>
+    </nav>
+    <div class="header-tools">
+      <button id="textSizeBtn" class="tool-btn" title="Change text size">A+ Text size</button>
+      <button id="contrastBtn" class="tool-btn" title="Toggle high contrast">◐ Contrast</button>
+    </div>
+  </header>
+
+  <main id="app">
+
+    <!-- ============ HOME / DASHBOARD VIEW ============ -->
+    <section id="view-home" class="view" aria-label="Home">
+      <h1 class="hello" id="greeting">Hi! Ready to write?</h1>
+      <p class="subtle">Pick something you'd like to write about. There's no wrong choice.</p>
+
+      <div class="snapshot" id="homeSnapshot">
+        <!-- filled by JS: quick stats -->
+      </div>
+
+      <h2 class="section-title">🗺️ Choose your quest</h2>
+      <div id="activityGrid" class="activity-grid">
+        <!-- filled by JS: activity cards -->
+      </div>
+    </section>
+
+    <!-- ============ WRITE VIEW ============ -->
+    <section id="view-write" class="view" aria-label="Write" hidden>
+      <div class="write-top">
+        <button id="backHome" class="link-btn">&larr; Back</button>
+        <div id="promptBox" class="prompt-box">
+          <div class="prompt-head">
+            <span class="prompt-label">Your idea — tap to change it</span>
+            <button id="shufflePrompt" class="link-btn" type="button">🔄 Different idea</button>
+          </div>
+          <p id="promptText" contenteditable="true" spellcheck="false">—</p>
+        </div>
+      </div>
+
+      <!-- Planning scaffold -->
+      <details id="plannerWrap" class="planner">
+        <summary>Plan first (optional)</summary>
+        <div class="planner-body">
+          <p class="subtle">You can jot a few notes here before you write. Or skip it — that's okay too.</p>
+          <label class="plan-field">
+            <span>My big idea</span>
+            <input type="text" id="planBig" placeholder="What is this about?" />
+          </label>
+          <div class="plan-details">
+            <label class="plan-field"><span>One thing</span><input type="text" id="planD1" class="dictatable" /></label>
+            <label class="plan-field"><span>Another thing</span><input type="text" id="planD2" class="dictatable" /></label>
+            <label class="plan-field"><span>One more thing</span><input type="text" id="planD3" class="dictatable" /></label>
+          </div>
+          <div class="starter-row">
+            <span class="subtle">Sentence starters — tap to add:</span>
+            <div id="starterChips" class="chips"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Five-paragraph essay builder (shown only for the essay activity) -->
+      <section id="essayOutline" class="essay-outline" hidden>
+        <div class="essay-head">
+          <h2>Essay Builder</h2>
+          <p class="subtle">Fill in the parts you want — you can tap a box and use the talk button too.
+            When you're ready, tap <strong>Build my essay</strong> and it turns into five paragraphs you can edit and read aloud.</p>
+        </div>
+
+        <div class="essay-part" data-step="1">
+          <h3><span class="step-dot">1</span> Introduction</h3>
+          <label class="plan-field"><span>Hook — grab attention</span>
+            <input type="text" id="esHook" class="dictatable" placeholder="Start with a question or a surprising fact." /></label>
+          <label class="plan-field"><span>Big idea (your main point + your 3 reasons)</span>
+            <input type="text" id="esThesis" class="dictatable" placeholder="What is this essay about?" /></label>
+        </div>
+
+        <div class="essay-part" data-step="2">
+          <h3><span class="step-dot">2</span> First reason</h3>
+          <label class="plan-field"><span>Topic sentence</span>
+            <input type="text" id="esB1" class="dictatable" placeholder="My first reason is…" /></label>
+          <label class="plan-field"><span>Details or an example</span>
+            <textarea id="esB1d" class="dictatable essay-text" rows="2"></textarea></label>
+        </div>
+
+        <div class="essay-part" data-step="3">
+          <h3><span class="step-dot">3</span> Second reason</h3>
+          <label class="plan-field"><span>Topic sentence</span>
+            <input type="text" id="esB2" class="dictatable" placeholder="Another reason is…" /></label>
+          <label class="plan-field"><span>Details or an example</span>
+            <textarea id="esB2d" class="dictatable essay-text" rows="2"></textarea></label>
+        </div>
+
+        <div class="essay-part" data-step="4">
+          <h3><span class="step-dot">4</span> Third reason</h3>
+          <label class="plan-field"><span>Topic sentence</span>
+            <input type="text" id="esB3" class="dictatable" placeholder="A final reason is…" /></label>
+          <label class="plan-field"><span>Details or an example</span>
+            <textarea id="esB3d" class="dictatable essay-text" rows="2"></textarea></label>
+        </div>
+
+        <div class="essay-part" data-step="5">
+          <h3><span class="step-dot">5</span> Conclusion</h3>
+          <label class="plan-field"><span>Say your big idea again, in a new way</span>
+            <input type="text" id="esRestate" class="dictatable" placeholder="As you can see…" /></label>
+          <label class="plan-field"><span>One closing thought</span>
+            <input type="text" id="esClose" class="dictatable" placeholder="The last thing I want you to remember is…" /></label>
+        </div>
+
+        <button id="buildEssay" class="primary-btn">Build my essay ↓</button>
+      </section>
+
+      <!-- Figurative-language helper -->
+      <details id="figWrap" class="planner">
+        <summary>✨ Add some sparkle (similes, metaphors &amp; more)</summary>
+        <div class="planner-body">
+          <p class="subtle">Tap one to add it to your writing. Words with <strong>___</strong> are blanks for you to fill in.</p>
+          <div id="figGroups"></div>
+        </div>
+      </details>
+
+      <!-- Short-burst timer -->
+      <div class="burst-bar">
+        <span class="burst-label">Short burst:</span>
+        <div class="burst-choices" id="burstChoices">
+          <button class="burst-btn" data-min="3">3 min</button>
+          <button class="burst-btn" data-min="5">5 min</button>
+          <button class="burst-btn" data-min="10">10 min</button>
+        </div>
+        <div class="burst-timer" id="burstTimer" hidden>
+          <span id="burstClock">0:00</span>
+          <button id="burstStop" class="link-btn">Stop</button>
+        </div>
+      </div>
+
+      <!-- Dictation + writing surface -->
+      <div class="writing-surface">
+        <div class="dictation-row">
+          <button id="micBtn" class="mic-btn">
+            <span class="mic-dot" aria-hidden="true"></span>
+            <span id="micLabel">Start talking</span>
+          </button>
+          <span id="micStatus" class="mic-status" role="status">Tip: tap "Start talking" and just say your ideas.</span>
+        </div>
+        <textarea id="editor" class="editor dictatable" placeholder="Your words will show up here. You can type, or tap the talk button and speak."></textarea>
+        <div class="editor-foot">
+          <span id="wordCount" class="word-count">0 words</span>
+          <div class="editor-actions">
+            <button id="readAloudBtn" class="tool-btn" title="Read my writing back to me">🔊 Read it to me</button>
+            <button id="downloadBtn" class="tool-btn" title="Save my writing as a Word document">⬇️ Save to Word</button>
+            <button id="finishBtn" class="primary-btn">I'm finished</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="feedbackBanner" class="feedback-banner" hidden></div>
+    </section>
+
+    <!-- ============ PROGRESS VIEW ============ -->
+    <section id="view-progress" class="view" aria-label="My Progress" hidden>
+      <h1>My Progress</h1>
+      <div id="statCards" class="stat-cards"></div>
+
+      <h2 class="section-title">My badges</h2>
+      <div id="badgeGrid" class="badge-grid"></div>
+
+      <h2 class="section-title">Things I've written</h2>
+      <div id="historyList" class="history-list"></div>
+
+      <button id="resetBtn" class="link-btn danger">Start fresh (clear my progress)</button>
+    </section>
+
+  </main>
+
+  <!-- Celebration overlay -->
+  <div id="celebrate" class="celebrate" hidden>
+    <div class="celebrate-card">
+      <div class="celebrate-emoji" id="celebrateEmoji">🎉</div>
+      <h2 id="celebrateTitle">Nice work!</h2>
+      <p id="celebrateMsg"></p>
+      <button id="celebrateClose" class="primary-btn">Keep going</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
