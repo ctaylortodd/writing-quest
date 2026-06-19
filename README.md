@@ -4,7 +4,7 @@ A friendly, web-based **writing-support app** that helps a young student turn bi
 ideas into written words. Built as a final project for a graduate special-education
 course, it shows how an educator can create a customized assistive-technology tool.
 
-**Live site:** _(add your GitHub Pages link here once deployed)_
+**Live site:** https://ctaylortodd.github.io/writing-quest/
 
 > Best in **Google Chrome** — the talk-to-write (dictation) feature uses a browser
 > capability that works most reliably there. Everything else works in any browser.
