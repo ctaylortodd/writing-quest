@@ -113,23 +113,26 @@
      High-frequency words (Fry/Dolch + common kid-writing words) used for
      autocomplete & word prediction. Custom dictionary words are added on top. */
   const COMMON_WORDS = [
-    'the','and','that','have','for','not','with','you','this','but','his','from','they','say','her',
-    'she','will','one','all','would','there','their','what','out','about','who','get','which','when',
-    'make','can','like','time','just','him','know','take','people','into','year','your','good','some',
-    'could','them','see','other','than','then','now','look','only','come','its','over','think','also',
-    'back','after','use','two','how','our','work','first','well','way','even','new','want','because',
-    'any','these','give','day','most','because','through','because','before','little','very','much',
-    'where','before','should','through','because','around','another','came','three','word','must',
-    'something','important','different','example','enough','together','almost','always','sometimes',
-    'really','people','friend','friends','family','school','teacher','student','play','played','playing',
-    'happy','sad','angry','excited','scared','funny','great','because','beautiful','favorite','animal',
-    'animals','dog','cat','house','water','tree','book','story','write','writing','idea','ideas',
-    'think','thought','feel','felt','said','went','going','goes','make','made','help','helped','start',
-    'started','finish','finished','learn','learned','remember','believe','wonder','wondered','imagine',
-    'world','place','people','reason','reasons','first','second','third','finally','next','then','also',
-    'mom','dad','brother','sister','game','games','run','jump','fast','slow','big','small','little',
-    'today','tomorrow','yesterday','morning','night','again','always','never','every','everyone',
-    'everything','something','anything','nothing','myself','yourself','really','probably','maybe'
+    'the','be','to','of','and','a','in','that','have','it','for','not','on','with','he','as','you',
+    'do','at','this','but','his','by','from','they','we','say','her','she','or','an','will','my','one',
+    'all','would','there','their','what','so','up','out','if','about','who','get','which','go','me',
+    'when','make','can','like','time','no','just','him','know','take','people','into','year','your',
+    'good','some','could','them','see','other','than','then','now','look','only','come','over','think',
+    'also','back','after','use','two','how','our','work','first','well','way','even','new','want',
+    'because','any','these','give','day','most','is','are','was','were','been','has','had','did',
+    'said','got','going','went','made','name','named','find','found','tell','ask','asked','feel','felt',
+    'try','tried','leave','call','called','very','through','much','before','right','too','old','same',
+    'big','little','great','small','another','here','thing','things','many','those','while','where',
+    'why','once','again','always','never','every','everyone','everything','something','anything',
+    'nothing','myself','yourself','really','maybe','please','thank','today','tomorrow','yesterday',
+    'morning','night','school','friend','friends','family','teacher','student','mom','dad','brother',
+    'sister','dog','cat','house','home','water','tree','book','story','write','writing','wrote','read',
+    'play','played','playing','run','jump','fun','funny','happy','sad','angry','scared','excited',
+    'food','world','place','reason','reasons','idea','ideas','animal','animals','color','number',
+    'word','words','sentence','question','answer','favorite','beautiful','different','important',
+    'together','almost','around','three','four','five','started','finished','learned','remember',
+    'believe','wonder','wondered','imagine','looked','wanted','money','mother','father','children',
+    'second','third','finally','next','first','example','enough','probably','sometimes','should','must'
   ];
 
   // Common misspellings → corrections (applied on space/punctuation when AutoCorrect is on).
@@ -850,14 +853,51 @@
     updateWordCount();
   }
 
+  // Generate every word one edit away (Norvig-style: delete/transpose/replace/insert).
+  function edits1(w) {
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const out = new Set();
+    for (let i = 0; i <= w.length; i++) {
+      const L = w.slice(0, i), R = w.slice(i);
+      if (R) out.add(L + R.slice(1));                          // delete
+      if (R.length > 1) out.add(L + R[1] + R[0] + R.slice(2)); // transpose
+      for (const c of letters) {
+        if (R) out.add(L + c + R.slice(1));                    // replace
+        out.add(L + c + R);                                    // insert
+      }
+    }
+    return out;
+  }
+
+  // Best correction for a misspelled word: a known word one edit away.
+  // Only same-length-or-longer candidates (so "nam"→"name", never "→am"),
+  // ranked by how common the word is.
+  function bestCorrection(word) {
+    const pool = wordPool();
+    const set = new Set(pool.map(w => w.toLowerCase()));
+    const lw = word.toLowerCase();
+    if (set.has(lw)) return null;                              // already a real word
+    const edits = edits1(lw);
+    const cands = [];
+    for (const e of edits) if (set.has(e) && e.length >= lw.length) cands.push(e);
+    if (!cands.length) return null;
+    const rank = {}; pool.forEach((w, i) => { const k = w.toLowerCase(); if (!(k in rank)) rank[k] = i; });
+    cands.sort((a, b) => rank[a] - rank[b]);
+    return cands[0];
+  }
+
   // Decide if a just-typed word should be corrected/expanded.
   function correctionFor(word) {
     const lw = word.toLowerCase();
-    if (state.customDictionary.some(w => w.toLowerCase() === lw)) return null;
+    if (state.customDictionary.some(w => w.toLowerCase() === lw)) return null;   // protect custom words
     const sc = state.shortcuts.find(s => s.short.toLowerCase() === lw);
-    if (sc) return matchCase(word, sc.full);
-    if (COMMON_TYPOS[lw]) return matchCase(word, COMMON_TYPOS[lw]);
-    return null;
+    if (sc) return matchCase(word, sc.full);                                     // shortcut expansion
+    if (COMMON_TYPOS[lw]) return matchCase(word, COMMON_TYPOS[lw]);              // known typo
+    // General spelling fix — skip likely names (Capitalized) and very short words.
+    const isCapitalized = word[0] !== word[0].toLowerCase();
+    if (isCapitalized || word.length < 3) return null;
+    const fix = bestCorrection(word);
+    return fix ? matchCase(word, fix) : null;
   }
 
   // On a word boundary (space / punctuation), fix the preceding word.
