@@ -16,6 +16,7 @@
     <nav class="main-nav" aria-label="Main">
       <button class="nav-btn" data-view="home" aria-current="true">Home</button>
       <button class="nav-btn" data-view="write">Write</button>
+      <button class="nav-btn" data-view="ideas">Ideas</button>
       <button class="nav-btn" data-view="progress">My Progress</button>
     </nav>
     <div class="header-tools">
@@ -36,6 +37,8 @@
         <!-- filled by JS: quick stats -->
       </div>
 
+      <div id="homeGoal" class="home-goal"><!-- filled by JS: today's goal bar --></div>
+
       <h2 class="section-title">🗺️ Choose your quest</h2>
       <div id="activityGrid" class="activity-grid">
         <!-- filled by JS: activity cards -->
@@ -49,7 +52,10 @@
         <div id="promptBox" class="prompt-box">
           <div class="prompt-head">
             <span class="prompt-label">Your idea — tap to change it</span>
-            <button id="shufflePrompt" class="link-btn" type="button">🔄 Different idea</button>
+            <span class="prompt-head-btns">
+              <button id="ghostBtn" class="link-btn" type="button" title="Stuck? Get an idea">🪄 Stuck?</button>
+              <button id="shufflePrompt" class="link-btn" type="button">🔄 Different idea</button>
+            </span>
           </div>
           <p id="promptText" contenteditable="true" spellcheck="false">—</p>
         </div>
@@ -164,6 +170,7 @@
         <div class="editor-foot">
           <span id="wordCount" class="word-count">0 words</span>
           <div class="editor-actions">
+            <button id="focusBtn" class="tool-btn" title="Hide everything but the writing box">🎯 Focus mode</button>
             <button id="readAloudBtn" class="tool-btn" title="Read my writing back to me">🔊 Read it to me</button>
             <button id="downloadBtn" class="tool-btn" title="Save my writing as a Word document">⬇️ Save to Word</button>
             <button id="finishBtn" class="primary-btn">I'm finished</button>
@@ -174,10 +181,25 @@
       <div id="feedbackBanner" class="feedback-banner" hidden></div>
     </section>
 
+    <!-- ============ IDEAS VIEW ============ -->
+    <section id="view-ideas" class="view" aria-label="Ideas" hidden>
+      <h1>💡 My Ideas</h1>
+      <p class="subtle">Got a thought? Jot it here now — you can turn any idea into a full writing project whenever you're ready.</p>
+      <div class="add-row idea-add-row">
+        <input type="text" id="ideaInput" placeholder="Jot a quick idea…" />
+        <button id="ideaAdd" class="primary-btn">Add idea</button>
+      </div>
+      <div id="ideaList" class="idea-list"></div>
+    </section>
+
     <!-- ============ PROGRESS VIEW ============ -->
     <section id="view-progress" class="view" aria-label="My Progress" hidden>
       <h1>My Progress</h1>
       <div id="statCards" class="stat-cards"></div>
+
+      <h2 class="section-title">Daily goal</h2>
+      <div id="goalBar"></div>
+      <div id="weekChart" class="week-chart"></div>
 
       <h2 class="section-title">My badges</h2>
       <div id="badgeGrid" class="badge-grid"></div>
@@ -200,6 +222,25 @@
     </div>
   </div>
 
+  <!-- Floating exit button for distraction-free Focus mode -->
+  <button id="focusExit" class="primary-btn">✓ Done focusing</button>
+
+  <!-- Ghostwriter (writer's-block helper) overlay -->
+  <div id="ghost" class="modal" hidden>
+    <div class="modal-card ghost-card">
+      <div class="modal-head">
+        <h2>🪄 Ghostwriter</h2>
+        <button id="ghostClose" class="tool-btn" title="Close">✕ Close</button>
+      </div>
+      <p class="subtle">Stuck? Here's an idea to get you going.</p>
+      <p id="ghostText" class="ghost-text"></p>
+      <div class="ghost-actions">
+        <button id="ghostAnother" class="tool-btn">🎲 Another idea</button>
+        <button id="ghostUse" class="primary-btn">Use this idea</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings / grown-up tools overlay -->
   <div id="settings" class="modal" hidden>
     <div class="modal-card">
@@ -213,6 +254,7 @@
         <h3>Helpers</h3>
         <label class="switch-row"><input type="checkbox" id="toggleSuggest"> <span>Word suggestions (predict &amp; finish words as you type)</span></label>
         <label class="switch-row"><input type="checkbox" id="toggleAutocorrect"> <span>AutoCorrect (fix common typos &amp; expand shortcuts)</span></label>
+        <label class="switch-row"><span>Daily word goal:</span> <input type="number" id="goalInput" class="goal-input" min="0" step="10"></label>
       </section>
 
       <section class="set-block">

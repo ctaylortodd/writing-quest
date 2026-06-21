@@ -173,7 +173,10 @@
     customDictionary: [],   // adult-added words → feed suggestions
     shortcuts: [],          // [{ short, full }] AutoCorrect expansions
     wordSuggest: true,      // show word prediction strip
-    autoCorrect: true       // fix typos / expand shortcuts on space
+    autoCorrect: true,      // fix typos / expand shortcuts on space
+    dailyWords: {},         // { 'YYYY-M-D': words written that day }
+    dailyGoal: 50,          // daily word-count goal
+    ideas: []               // [{ text, date }] quick jotted ideas
   };
 
   function load() {
@@ -217,10 +220,12 @@
 
   /* ---------------- Navigation ---------------- */
   function showView(name) {
+    if (name !== 'write') document.body.classList.remove('focus-mode');
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + name; });
     $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === name ? 'true' : 'false'));
     if (name === 'home') renderHome();
     if (name === 'progress') renderProgress();
+    if (name === 'ideas') renderIdeas();
     window.scrollTo(0, 0);
   }
   $$('.nav-btn').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
@@ -257,6 +262,7 @@
       <div class="chip-stat"><span class="em">📚</span><strong>${state.sessions}</strong><small>writings<br>finished</small></div>
       <div class="chip-stat"><span class="em">🔥</span><strong>${state.streak}</strong><small>day<br>streak</small></div>
     `;
+    $('#homeGoal').innerHTML = goalBarHTML();
 
     $('#activityGrid').innerHTML = ACTIVITIES.map(a => `
       <button class="activity-card" data-id="${a.id}">
@@ -275,11 +281,11 @@
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  function openActivity(id) {
+  function openActivity(id, customPrompt) {
     current = ACTIVITIES.find(a => a.id === id) || ACTIVITIES[0];
     editingIndex = null;
     $('#finishBtn').textContent = 'I\'m finished';
-    $('#promptText').textContent = pick(current.prompts);
+    $('#promptText').textContent = customPrompt || pick(current.prompts);
 
     // sentence-starter chips
     $('#starterChips').innerHTML = current.starters
@@ -637,6 +643,7 @@
       const entry = state.history[editingIndex];
       state.totalWords += (words - entry.words);   // adjust by the difference
       if (state.totalWords < 0) state.totalWords = 0;
+      if (words > entry.words) bumpDaily(words - entry.words);   // count added words today
       entry.words = words;
       entry.text = text;
       // best single writing may change if this was (or is now) the longest
@@ -654,6 +661,7 @@
     state.totalWords += words;
     state.sessions += 1;
     state.bestSession = Math.max(state.bestSession, words);
+    bumpDaily(words);
 
     // streak handling
     const today = todayStr();
@@ -748,6 +756,8 @@
       <div class="stat-card"><div class="num">${state.bestSession}</div><div class="lbl">best single writing</div></div>
       <div class="stat-card"><div class="num">${state.streak}</div><div class="lbl">day streak</div></div>
     `;
+    $('#goalBar').innerHTML = goalBarHTML();
+    renderWeekChart();
 
     $('#badgeGrid').innerHTML = BADGES.map(b => `
       <div class="badge ${state.earnedBadges.includes(b.id) ? 'earned' : ''}">
@@ -928,6 +938,7 @@
   function renderSettings() {
     $('#toggleSuggest').checked = state.wordSuggest;
     $('#toggleAutocorrect').checked = state.autoCorrect;
+    $('#goalInput').value = state.dailyGoal;
     $('#dictList').innerHTML = state.customDictionary.length
       ? state.customDictionary.map((w, i) =>
           `<li><span>${escapeHtml(w)}</span><button class="chip-x" data-type="dict" data-i="${i}" title="Remove">×</button></li>`).join('')
@@ -971,6 +982,125 @@
   $('#scFull').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addShortcut(); } });
   $('#toggleSuggest').addEventListener('change', e => { state.wordSuggest = e.target.checked; save(); if (!state.wordSuggest) $('#suggestStrip').hidden = true; });
   $('#toggleAutocorrect').addEventListener('change', e => { state.autoCorrect = e.target.checked; save(); });
+  $('#goalInput').addEventListener('change', e => {
+    const v = parseInt(e.target.value, 10);
+    state.dailyGoal = (isNaN(v) || v < 0) ? 0 : v;
+    save(); renderHome();
+  });
+
+  /* ---------------- Productivity tracking ---------------- */
+  function bumpDaily(n) {
+    const t = todayStr();
+    state.dailyWords[t] = (state.dailyWords[t] || 0) + n;
+  }
+  function todayWords() { return state.dailyWords[todayStr()] || 0; }
+
+  function recentDays(n) {
+    const base = new Date(), out = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+      out.push({ key, label: d.toLocaleDateString(undefined, { weekday: 'narrow' }), words: state.dailyWords[key] || 0 });
+    }
+    return out;
+  }
+
+  function goalBarHTML() {
+    const done = todayWords(), goal = state.dailyGoal || 0;
+    const pct = goal > 0 ? Math.min(100, Math.round(done / goal * 100)) : (done > 0 ? 100 : 0);
+    const met = goal > 0 && done >= goal;
+    return `<div class="goal-bar ${met ? 'met' : ''}">
+      <div class="goal-top"><span>${met ? '🎉 Goal reached!' : '🎯 Today\'s goal'}</span>
+        <span>${done}${goal > 0 ? ' / ' + goal : ''} words</span></div>
+      <div class="goal-track"><div class="goal-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  function renderWeekChart() {
+    const days = recentDays(7), goal = state.dailyGoal || 0;
+    const max = Math.max(goal, 1, ...days.map(d => d.words));
+    $('#weekChart').innerHTML = days.map(d => {
+      const h = Math.round(d.words / max * 100);
+      const met = goal > 0 && d.words >= goal;
+      return `<div class="bar-col">
+        <div class="bar-wrap"><div class="bar ${met ? 'met' : ''}" style="height:${Math.max(h, 2)}%"></div></div>
+        <div class="bar-num">${d.words}</div><div class="bar-lbl">${d.label}</div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ---------------- Distraction-free Focus mode ---------------- */
+  function enterFocus() { document.body.classList.add('focus-mode'); $('#editor').focus(); }
+  function exitFocus() { document.body.classList.remove('focus-mode'); }
+  $('#focusBtn').addEventListener('click', enterFocus);
+  $('#focusExit').addEventListener('click', exitFocus);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { exitFocus(); closeGhost(); } });
+
+  /* ---------------- Idea & Project workspace ----------------
+     Jot quick ideas now; turn one into a full writing project later. */
+  function renderIdeas() {
+    if (!state.ideas.length) {
+      $('#ideaList').innerHTML = `<p class="empty">No ideas yet. Jot anything you might want to write about — a topic, a character, a question.</p>`;
+      return;
+    }
+    $('#ideaList').innerHTML = state.ideas.map((it, i) => `
+      <div class="idea-item">
+        <p class="idea-text">${escapeHtml(it.text)}</p>
+        <div class="idea-actions">
+          <button class="primary-btn idea-go" data-i="${i}">✍️ Turn into writing</button>
+          <button class="link-btn idea-del" data-i="${i}">Delete</button>
+        </div>
+      </div>`).join('');
+    $$('.idea-go').forEach(b => b.addEventListener('click', () => turnIntoWriting(parseInt(b.dataset.i, 10))));
+    $$('.idea-del').forEach(b => b.addEventListener('click', () => {
+      state.ideas.splice(parseInt(b.dataset.i, 10), 1); save(); renderIdeas();
+    }));
+  }
+  function addIdea() {
+    const inp = $('#ideaInput');
+    const t = inp.value.trim();
+    if (t) { state.ideas.unshift({ text: t, date: todayStr() }); save(); }
+    inp.value = ''; inp.focus(); renderIdeas();
+  }
+  function turnIntoWriting(i) {
+    const it = state.ideas[i];
+    if (!it) return;
+    openActivity('free', it.text);   // seed the prompt with the idea
+  }
+  $('#ideaAdd').addEventListener('click', addIdea);
+  $('#ideaInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addIdea(); } });
+
+  /* ---------------- Ghostwriter (algorithmic idea sparks) ---------------- */
+  const GW_CHAR = ['a curious kid', 'a talking dog', 'a friendly robot', 'a tiny dragon', 'an astronaut',
+    'a clever detective', 'a young wizard', 'a brave mouse', 'a secret superhero', 'a sneaky pirate', 'a lonely giant'];
+  const GW_PLACE = ['in a haunted house', 'on a faraway planet', 'deep under the ocean', 'at a brand-new school',
+    'inside a video game', 'in a candy forest', 'on a deserted island', 'in a giant treehouse', 'in a city made of ice'];
+  const GW_EVENT = ['discovers a hidden door', 'loses something important', 'makes a surprising new friend',
+    'has to solve a tricky puzzle', 'finds a mysterious map', 'gets one wish granted', 'wakes up with a superpower',
+    'must save the day before sunset', 'hears a strange noise at night', 'switches places with someone'];
+  const GW_NUDGE = ['What happens next? Just write the very next thing.', 'Add what someone says out loud.',
+    'Describe what you can see, hear, and smell right now.', 'How does the main character feel?',
+    'What is the biggest surprise so far?', 'What could go wrong next?', 'Add one funny detail.',
+    'Zoom in on one small thing and describe it.', 'What does the character want most right now?'];
+
+  function generateSpark() {
+    // Mix story-starter prompts with "keep going" nudges.
+    if (Math.random() < 0.6) {
+      return `Write about ${pick(GW_CHAR)} who ${pick(GW_EVENT)} ${pick(GW_PLACE)}.`;
+    }
+    return pick(GW_NUDGE);
+  }
+  function openGhost() { $('#ghostText').textContent = generateSpark(); $('#ghost').hidden = false; }
+  function closeGhost() { $('#ghost').hidden = true; }
+  $('#ghostBtn').addEventListener('click', openGhost);
+  $('#ghostAnother').addEventListener('click', () => { $('#ghostText').textContent = generateSpark(); });
+  $('#ghostClose').addEventListener('click', closeGhost);
+  $('#ghost').addEventListener('click', e => { if (e.target.id === 'ghost') closeGhost(); });
+  $('#ghostUse').addEventListener('click', () => {
+    $('#promptText').textContent = $('#ghostText').textContent;
+    closeGhost();
+    $('#editor').focus();
+  });
 
   /* ---------------- Init ---------------- */
   applyPrefs();
