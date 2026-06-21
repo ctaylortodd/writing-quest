@@ -109,6 +109,40 @@
       items: ['BOOM!', 'splash!', 'the floor creaked', 'It took a million years', 'the loudest sound ever'] }
   ];
 
+  /* ---------------- Word-assist data ----------------
+     High-frequency words (Fry/Dolch + common kid-writing words) used for
+     autocomplete & word prediction. Custom dictionary words are added on top. */
+  const COMMON_WORDS = [
+    'the','and','that','have','for','not','with','you','this','but','his','from','they','say','her',
+    'she','will','one','all','would','there','their','what','out','about','who','get','which','when',
+    'make','can','like','time','just','him','know','take','people','into','year','your','good','some',
+    'could','them','see','other','than','then','now','look','only','come','its','over','think','also',
+    'back','after','use','two','how','our','work','first','well','way','even','new','want','because',
+    'any','these','give','day','most','because','through','because','before','little','very','much',
+    'where','before','should','through','because','around','another','came','three','word','must',
+    'something','important','different','example','enough','together','almost','always','sometimes',
+    'really','people','friend','friends','family','school','teacher','student','play','played','playing',
+    'happy','sad','angry','excited','scared','funny','great','because','beautiful','favorite','animal',
+    'animals','dog','cat','house','water','tree','book','story','write','writing','idea','ideas',
+    'think','thought','feel','felt','said','went','going','goes','make','made','help','helped','start',
+    'started','finish','finished','learn','learned','remember','believe','wonder','wondered','imagine',
+    'world','place','people','reason','reasons','first','second','third','finally','next','then','also',
+    'mom','dad','brother','sister','game','games','run','jump','fast','slow','big','small','little',
+    'today','tomorrow','yesterday','morning','night','again','always','never','every','everyone',
+    'everything','something','anything','nothing','myself','yourself','really','probably','maybe'
+  ];
+
+  // Common misspellings → corrections (applied on space/punctuation when AutoCorrect is on).
+  const COMMON_TYPOS = {
+    teh:'the', adn:'and', taht:'that', thier:'their', recieve:'receive', wich:'which', alot:'a lot',
+    becuase:'because', becasue:'because', fridn:'friend', freind:'friend', frist:'first', wnat:'want',
+    waht:'what', dosnt:'doesn’t', dont:'don’t', cant:'can’t', wont:'won’t', im:'I’m',
+    ive:'I’ve', didnt:'didn’t', wasnt:'wasn’t', isnt:'isn’t', favrite:'favorite',
+    favorit:'favorite', bcoz:'because', gonna:'going to', wanna:'want to', cuz:'because', u:'you',
+    ur:'your', r:'are', tommorow:'tomorrow', tomorow:'tomorrow', alway:'always', realy:'really',
+    verey:'very', somthing:'something', wierd:'weird', wen:'when', wht:'what', hte:'the', nad:'and'
+  };
+
   const BADGES = [
     { id: 'first',     emoji: '🌱', name: 'First Words',   desc: 'Finish your first writing.',        test: s => s.sessions >= 1 },
     { id: 'explorer',  emoji: '🧭', name: 'Word Explorer', desc: 'Write 100 words in all.',           test: s => s.totalWords >= 100 },
@@ -132,7 +166,11 @@
     earnedBadges: [],
     history: [],            // { date, activity, prompt, words, text }
     textScale: 1,
-    contrast: false
+    contrast: false,
+    customDictionary: [],   // adult-added words → feed suggestions
+    shortcuts: [],          // [{ short, full }] AutoCorrect expansions
+    wordSuggest: true,      // show word prediction strip
+    autoCorrect: true       // fix typos / expand shortcuts on space
   };
 
   function load() {
@@ -258,6 +296,7 @@
     $('#plannerWrap').open = false;
     $('#figWrap').open = false;
     $('#editor').value = '';
+    $('#suggestStrip').hidden = true; $('#suggestStrip').innerHTML = '';
     dictationTarget = $('#editor');
     updateWordCount();
     stopBurst();
@@ -748,6 +787,150 @@
       renderProgress();
     }
   });
+
+  /* ============================================================
+     Word-assist engine: prediction/autocomplete + AutoCorrect
+     ============================================================ */
+
+  // All candidate words: custom dictionary first (teacher's words rank high),
+  // then the common-word list. De-duplicated, lowercase keys.
+  function wordPool() {
+    const seen = new Set(), pool = [];
+    for (const w of state.customDictionary.concat(COMMON_WORDS)) {
+      const k = w.toLowerCase();
+      if (!seen.has(k)) { seen.add(k); pool.push(w); }
+    }
+    return pool;
+  }
+
+  // The word currently being typed at the caret in the main editor.
+  function currentToken() {
+    const ed = $('#editor');
+    const pos = ed.selectionStart;
+    const upto = ed.value.slice(0, pos);
+    const m = upto.match(/[A-Za-z']+$/);
+    return m ? { start: pos - m[0].length, text: m[0] } : { start: pos, text: '' };
+  }
+
+  // Preserve the capitalization the student started with.
+  function matchCase(typed, word) {
+    return (typed && typed[0] === typed[0].toUpperCase())
+      ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+  }
+
+  function renderSuggestions() {
+    const strip = $('#suggestStrip');
+    if (!state.wordSuggest || $('#editor').offsetParent === null) { strip.hidden = true; return; }
+    const tok = currentToken();
+    if (tok.text.length < 2) { strip.hidden = true; strip.innerHTML = ''; return; }
+    const q = tok.text.toLowerCase();
+    const matches = [];
+    for (const w of wordPool()) {
+      const lw = w.toLowerCase();
+      if (lw.startsWith(q) && lw !== q) { matches.push(w); if (matches.length >= 5) break; }
+    }
+    if (!matches.length) { strip.hidden = true; strip.innerHTML = ''; return; }
+    strip.innerHTML = '<span class="suggest-label">💡</span>' + matches
+      .map(w => `<button type="button" class="suggest-chip">${escapeHtml(matchCase(tok.text, w))}</button>`).join('');
+    $$('#suggestStrip .suggest-chip').forEach((b, i) =>
+      b.addEventListener('click', () => applySuggestion(matches[i], tok)));
+    strip.hidden = false;
+  }
+
+  function applySuggestion(word, tok) {
+    const ed = $('#editor');
+    const finalWord = matchCase(tok.text, word);
+    const end = tok.start + tok.text.length;
+    const before = ed.value.slice(0, tok.start), after = ed.value.slice(end);
+    ed.value = before + finalWord + ' ' + after;
+    const caret = (before + finalWord + ' ').length;
+    ed.setSelectionRange(caret, caret);
+    ed.focus();
+    $('#suggestStrip').hidden = true; $('#suggestStrip').innerHTML = '';
+    updateWordCount();
+  }
+
+  // Decide if a just-typed word should be corrected/expanded.
+  function correctionFor(word) {
+    const lw = word.toLowerCase();
+    if (state.customDictionary.some(w => w.toLowerCase() === lw)) return null;
+    const sc = state.shortcuts.find(s => s.short.toLowerCase() === lw);
+    if (sc) return matchCase(word, sc.full);
+    if (COMMON_TYPOS[lw]) return matchCase(word, COMMON_TYPOS[lw]);
+    return null;
+  }
+
+  // On a word boundary (space / punctuation), fix the preceding word.
+  function maybeAutoCorrect(e) {
+    if (!state.autoCorrect || e.inputType !== 'insertText') return;
+    const trig = e.data || '';
+    if (trig !== ' ' && !/[.!?,;:]/.test(trig)) return;
+    const ed = $('#editor');
+    const pos = ed.selectionStart;                 // caret sits just after the trigger char
+    const m = ed.value.slice(0, pos - 1).match(/([A-Za-z']+)$/);
+    if (!m) return;
+    const word = m[1], fix = correctionFor(word);
+    if (!fix || fix === word) return;
+    const wordStart = pos - 1 - word.length;
+    ed.value = ed.value.slice(0, wordStart) + fix + ed.value.slice(pos - 1);
+    const caret = wordStart + fix.length + 1;       // keep the trigger char after the word
+    ed.setSelectionRange(caret, caret);
+    updateWordCount();
+  }
+
+  $('#editor').addEventListener('input', e => { maybeAutoCorrect(e); renderSuggestions(); });
+  $('#editor').addEventListener('blur', () => setTimeout(() => { $('#suggestStrip').hidden = true; }, 200));
+
+  /* ---------------- Settings (grown-up tools) ---------------- */
+  function openSettings() { renderSettings(); $('#settings').hidden = false; }
+  function closeSettings() { $('#settings').hidden = true; }
+
+  function renderSettings() {
+    $('#toggleSuggest').checked = state.wordSuggest;
+    $('#toggleAutocorrect').checked = state.autoCorrect;
+    $('#dictList').innerHTML = state.customDictionary.length
+      ? state.customDictionary.map((w, i) =>
+          `<li><span>${escapeHtml(w)}</span><button class="chip-x" data-type="dict" data-i="${i}" title="Remove">×</button></li>`).join('')
+      : '<li class="empty">No words added yet.</li>';
+    $('#scList').innerHTML = state.shortcuts.length
+      ? state.shortcuts.map((s, i) =>
+          `<li><span><strong>${escapeHtml(s.short)}</strong> → ${escapeHtml(s.full)}</span><button class="chip-x" data-type="sc" data-i="${i}" title="Remove">×</button></li>`).join('')
+      : '<li class="empty">No shortcuts yet.</li>';
+    $$('#settings .chip-x').forEach(b => b.addEventListener('click', () => {
+      const i = parseInt(b.dataset.i, 10);
+      if (b.dataset.type === 'dict') state.customDictionary.splice(i, 1);
+      else state.shortcuts.splice(i, 1);
+      save(); renderSettings();
+    }));
+  }
+
+  function addDictWord() {
+    const inp = $('#dictInput');
+    const w = inp.value.trim();
+    if (w && !state.customDictionary.some(x => x.toLowerCase() === w.toLowerCase())) {
+      state.customDictionary.push(w); save();
+    }
+    inp.value = ''; inp.focus(); renderSettings();
+  }
+  function addShortcut() {
+    const s = $('#scShort').value.trim(), f = $('#scFull').value.trim();
+    if (s && f) {
+      const existing = state.shortcuts.find(x => x.short.toLowerCase() === s.toLowerCase());
+      if (existing) existing.full = f; else state.shortcuts.push({ short: s, full: f });
+      save();
+    }
+    $('#scShort').value = ''; $('#scFull').value = ''; $('#scShort').focus(); renderSettings();
+  }
+
+  $('#settingsBtn').addEventListener('click', openSettings);
+  $('#settingsClose').addEventListener('click', closeSettings);
+  $('#settings').addEventListener('click', e => { if (e.target.id === 'settings') closeSettings(); });
+  $('#dictAdd').addEventListener('click', addDictWord);
+  $('#dictInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addDictWord(); } });
+  $('#scAdd').addEventListener('click', addShortcut);
+  $('#scFull').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addShortcut(); } });
+  $('#toggleSuggest').addEventListener('change', e => { state.wordSuggest = e.target.checked; save(); if (!state.wordSuggest) $('#suggestStrip').hidden = true; });
+  $('#toggleAutocorrect').addEventListener('change', e => { state.autoCorrect = e.target.checked; save(); });
 
   /* ---------------- Init ---------------- */
   applyPrefs();

@@ -21,6 +21,7 @@
     <div class="header-tools">
       <button id="textSizeBtn" class="tool-btn" title="Change text size">A+ Text size</button>
       <button id="contrastBtn" class="tool-btn" title="Toggle high contrast">◐ Contrast</button>
+      <button id="settingsBtn" class="tool-btn" title="Word help &amp; grown-up settings">⚙️ Settings</button>
     </div>
   </header>
 
@@ -158,7 +159,8 @@
           </button>
           <span id="micStatus" class="mic-status" role="status">Tip: tap "Start talking" and just say your ideas.</span>
         </div>
-        <textarea id="editor" class="editor dictatable" placeholder="Your words will show up here. You can type, or tap the talk button and speak."></textarea>
+        <textarea id="editor" class="editor dictatable" spellcheck="true" placeholder="Your words will show up here. You can type, or tap the talk button and speak."></textarea>
+        <div id="suggestStrip" class="suggest-strip" hidden></div>
         <div class="editor-foot">
           <span id="wordCount" class="word-count">0 words</span>
           <div class="editor-actions">
@@ -195,6 +197,44 @@
       <h2 id="celebrateTitle">Nice work!</h2>
       <p id="celebrateMsg"></p>
       <button id="celebrateClose" class="primary-btn">Keep going</button>
+    </div>
+  </div>
+
+  <!-- Settings / grown-up tools overlay -->
+  <div id="settings" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>⚙️ Word Help &amp; Settings</h2>
+        <button id="settingsClose" class="tool-btn" title="Close">✕ Close</button>
+      </div>
+      <p class="subtle">These tools are meant for a grown-up to set up. Changes are saved automatically.</p>
+
+      <section class="set-block">
+        <h3>Helpers</h3>
+        <label class="switch-row"><input type="checkbox" id="toggleSuggest"> <span>Word suggestions (predict &amp; finish words as you type)</span></label>
+        <label class="switch-row"><input type="checkbox" id="toggleAutocorrect"> <span>AutoCorrect (fix common typos &amp; expand shortcuts)</span></label>
+      </section>
+
+      <section class="set-block">
+        <h3>Specialized dictionary</h3>
+        <p class="subtle">Add special words — names, places, science or math terms — so they show up as suggestions.</p>
+        <div class="add-row">
+          <input type="text" id="dictInput" placeholder="Add a word…" />
+          <button id="dictAdd" class="primary-btn">Add</button>
+        </div>
+        <ul id="dictList" class="set-list"></ul>
+      </section>
+
+      <section class="set-block">
+        <h3>AutoCorrect shortcuts</h3>
+        <p class="subtle">Type a short code and it expands automatically. Example: <strong>bff</strong> → best friend.</p>
+        <div class="add-row">
+          <input type="text" id="scShort" class="sc-short" placeholder="Shortcut (e.g. bff)" />
+          <input type="text" id="scFull" placeholder="Becomes… (e.g. best friend)" />
+          <button id="scAdd" class="primary-btn">Add</button>
+        </div>
+        <ul id="scList" class="set-list"></ul>
+      </section>
     </div>
   </div>
 
