@@ -207,6 +207,13 @@
       <h2 class="section-title">Things I've written</h2>
       <div id="historyList" class="history-list"></div>
 
+      <h2 class="section-title">For a grown-up</h2>
+      <div class="report-row">
+        <button id="emailReportBtn" class="primary-btn">📧 Email progress report</button>
+        <button id="copyReportBtn" class="tool-btn">📋 Copy report text</button>
+      </div>
+      <p class="subtle report-note">Set the student name &amp; teacher's email in ⚙️ Settings. If the email button doesn't open your mail app, use “Copy report text” and paste it into an email.</p>
+
       <button id="resetBtn" class="link-btn danger">Start fresh (clear my progress)</button>
     </section>
 
@@ -255,6 +262,13 @@
         <label class="switch-row"><input type="checkbox" id="toggleSuggest"> <span>Word suggestions (predict &amp; finish words as you type)</span></label>
         <label class="switch-row"><input type="checkbox" id="toggleAutocorrect"> <span>AutoCorrect (fix common typos &amp; expand shortcuts)</span></label>
         <label class="switch-row"><span>Daily word goal:</span> <input type="number" id="goalInput" class="goal-input" min="0" step="10"></label>
+      </section>
+
+      <section class="set-block">
+        <h3>Progress reports</h3>
+        <p class="subtle">Used when you email a progress report from the <strong>My Progress</strong> page.</p>
+        <label class="switch-row"><span>Student name:</span> <input type="text" id="studentNameInput" class="report-input" placeholder="(optional)"></label>
+        <label class="switch-row"><span>Send reports to:</span> <input type="email" id="teacherEmailInput" class="report-input" placeholder="teacher@school.org"></label>
       </section>
 
       <section class="set-block">

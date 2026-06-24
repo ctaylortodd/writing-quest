@@ -176,7 +176,9 @@
     autoCorrect: true,      // fix typos / expand shortcuts on space
     dailyWords: {},         // { 'YYYY-M-D': words written that day }
     dailyGoal: 50,          // daily word-count goal
-    ideas: []               // [{ text, date }] quick jotted ideas
+    ideas: [],              // [{ text, date }] quick jotted ideas
+    studentName: '',        // for the progress report
+    teacherEmail: ''        // default recipient for emailed reports
   };
 
   function load() {
@@ -939,6 +941,8 @@
     $('#toggleSuggest').checked = state.wordSuggest;
     $('#toggleAutocorrect').checked = state.autoCorrect;
     $('#goalInput').value = state.dailyGoal;
+    $('#studentNameInput').value = state.studentName || '';
+    $('#teacherEmailInput').value = state.teacherEmail || '';
     $('#dictList').innerHTML = state.customDictionary.length
       ? state.customDictionary.map((w, i) =>
           `<li><span>${escapeHtml(w)}</span><button class="chip-x" data-type="dict" data-i="${i}" title="Remove">×</button></li>`).join('')
@@ -987,6 +991,8 @@
     state.dailyGoal = (isNaN(v) || v < 0) ? 0 : v;
     save(); renderHome();
   });
+  $('#studentNameInput').addEventListener('change', e => { state.studentName = e.target.value.trim(); save(); });
+  $('#teacherEmailInput').addEventListener('change', e => { state.teacherEmail = e.target.value.trim(); save(); });
 
   /* ---------------- Productivity tracking ---------------- */
   function bumpDaily(n) {
@@ -1028,6 +1034,60 @@
       </div>`;
     }).join('');
   }
+
+  /* ---------------- Progress report (email via mailto) ----------------
+     Builds a short text summary an adult can email to a teacher/parent.
+     No server: it opens the family's own mail app with everything filled in.
+     Kept brief because mailto links have a length limit and can't attach files. */
+  function buildReportText() {
+    const name = (state.studentName || 'The student').trim();
+    const last7 = recentDays(7).map(d => `${d.label}:${d.words}`).join('  ');
+    const recent = state.history.slice(0, 8)
+      .map(h => `- ${h.activity} — ${h.words} words (${h.date})`).join('\n') || '- (none yet)';
+    return [
+      'Writing Quest — Progress Report',
+      `Student: ${name}`,
+      `Date: ${todayStr()}`,
+      '',
+      'TOTALS',
+      `- Words written (all time): ${state.totalWords}`,
+      `- Writings finished: ${state.sessions}`,
+      `- Day streak: ${state.streak}`,
+      `- Best single writing: ${state.bestSession} words`,
+      '',
+      `DAILY GOAL: ${state.dailyGoal} words/day`,
+      `- Today so far: ${todayWords()} words`,
+      `- Last 7 days — ${last7}`,
+      '',
+      'RECENT WRITINGS',
+      recent,
+      '',
+      'Sent from Writing Quest'
+    ].join('\n');
+  }
+
+  function emailReport() {
+    const subject = `Writing Quest progress${state.studentName ? ' — ' + state.studentName : ''} (${todayStr()})`;
+    const to = encodeURIComponent(state.teacherEmail || '');
+    window.location.href =
+      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildReportText())}`;
+  }
+
+  function copyReport() {
+    const text = buildReportText(), btn = $('#copyReportBtn');
+    const done = () => { const o = btn.textContent; btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = o; }, 2500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else { fallbackCopy(text, done); }
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta); done();
+  }
+  $('#emailReportBtn').addEventListener('click', emailReport);
+  $('#copyReportBtn').addEventListener('click', copyReport);
 
   /* ---------------- Distraction-free Focus mode ---------------- */
   function enterFocus() { document.body.classList.add('focus-mode'); $('#editor').focus(); }

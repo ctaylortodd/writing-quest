@@ -361,6 +361,10 @@ h1, h2, h3, .brand, .nav-btn, .primary-btn, .mic-btn, .burst-btn,
 .chip-x:hover { background: rgba(255,157,92,.2); }
 .goal-input { width: 90px; font: inherit; padding: 0.4rem 0.6rem; color: var(--ink);
   border: 2px solid var(--line); border-radius: 10px; background: rgba(8,12,40,.6); }
+.report-input { flex: 1; min-width: 200px; font: inherit; padding: 0.45rem 0.6rem; color: var(--ink);
+  border: 2px solid var(--line); border-radius: 10px; background: rgba(8,12,40,.6); }
+.report-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.report-note { margin-top: 0.6rem; font-size: 0.95rem; }
 
 /* ---------- Ideas workspace ---------- */
 .idea-add-row { max-width: 620px; margin-top: 1rem; }
