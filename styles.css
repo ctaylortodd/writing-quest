@@ -375,6 +375,16 @@ h1, h2, h3, .brand, .nav-btn, .primary-btn, .mic-btn, .burst-btn,
 .idea-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .idea-actions .idea-del { color: var(--warn); }
 
+/* ---------- Grammar check ---------- */
+#grammarBody { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem; max-height: 55vh; overflow-y: auto; }
+.gram-item { border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; background: rgba(8,12,40,.4); }
+.gram-msg { font-weight: 700; margin: 0 0 0.4rem; }
+.gram-ctx { margin: 0 0 0.6rem; color: var(--ink-soft); }
+.gram-ctx mark { background: var(--yellow); color: #1c2433; padding: 0 3px; border-radius: 3px; font-weight: 700; }
+.gram-fixes { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.gram-fix { border-color: var(--good); }
+.gram-ok { font-size: 1.2rem; font-weight: 700; color: var(--good); }
+
 /* ---------- Ghostwriter ---------- */
 .ghost-card { max-width: 480px; text-align: center; }
 .ghost-card .modal-head { text-align: left; }

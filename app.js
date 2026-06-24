@@ -1089,12 +1089,77 @@
   $('#emailReportBtn').addEventListener('click', emailReport);
   $('#copyReportBtn').addEventListener('click', copyReport);
 
+  /* ---------------- Grammar check (optional, online) ----------------
+     Uses LanguageTool's free public API. This is the one feature that
+     sends the writing to an outside service, so it only runs when the
+     student/teacher taps the button, and it's clearly labeled. */
+  let grammarText = '', grammarMatches = [];
+
+  async function checkGrammar() {
+    const text = $('#editor').value.trim();
+    if (!text) { showBanner('Write something first, then check grammar.'); return; }
+    $('#grammar').hidden = false;
+    $('#grammarBody').innerHTML = '<p class="subtle">Checking your writing…</p>';
+    try {
+      const res = await fetch('https://api.languagetool.org/v2/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'language=en-US&text=' + encodeURIComponent(text)
+      });
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      grammarText = text;
+      grammarMatches = data.matches || [];
+      renderGrammarMatches();
+    } catch (e) {
+      $('#grammarBody').innerHTML = '<p>⚠️ I couldn\'t reach the grammar helper. Please check your internet connection and try again. Your writing is safe — nothing was lost.</p>';
+    }
+  }
+
+  function renderGrammarMatches() {
+    const body = $('#grammarBody');
+    if (!grammarMatches.length) {
+      body.innerHTML = '<p class="gram-ok">✅ Looks good! No grammar suggestions right now.</p>';
+      return;
+    }
+    body.innerHTML = grammarMatches.map((m, i) => {
+      const c = m.context || { text: '', offset: 0, length: 0 };
+      const pre = escapeHtml(c.text.slice(0, c.offset));
+      const bad = escapeHtml(c.text.slice(c.offset, c.offset + c.length));
+      const post = escapeHtml(c.text.slice(c.offset + c.length));
+      const fixes = (m.replacements || []).slice(0, 3)
+        .map((r, ri) => `<button class="chip gram-fix" data-i="${i}" data-ri="${ri}">${escapeHtml(r.value) || '(remove)'}</button>`).join('');
+      return `<div class="gram-item">
+        <p class="gram-msg">${escapeHtml(m.message || '')}</p>
+        <p class="gram-ctx">${pre}<mark>${bad || '·'}</mark>${post}</p>
+        <div class="gram-fixes">${fixes || '<span class="subtle">No quick fix — take a look yourself.</span>'}</div>
+      </div>`;
+    }).join('');
+    $$('#grammarBody .gram-fix').forEach(b =>
+      b.addEventListener('click', () => applyGrammarFix(parseInt(b.dataset.i, 10), parseInt(b.dataset.ri, 10))));
+  }
+
+  function applyGrammarFix(i, ri) {
+    const m = grammarMatches[i]; if (!m) return;
+    const rep = (m.replacements || [])[ri]; if (!rep) return;
+    const ed = $('#editor');
+    if (ed.value !== grammarText) { checkGrammar(); return; } // text changed — recheck for fresh offsets
+    ed.value = ed.value.slice(0, m.offset) + rep.value + ed.value.slice(m.offset + m.length);
+    updateWordCount();
+    checkGrammar();   // re-run so remaining suggestions use correct positions
+  }
+
+  function closeGrammar() { $('#grammar').hidden = true; }
+  $('#grammarBtn').addEventListener('click', checkGrammar);
+  $('#grammarClose').addEventListener('click', closeGrammar);
+  $('#grammar').addEventListener('click', e => { if (e.target.id === 'grammar') closeGrammar(); });
+
   /* ---------------- Distraction-free Focus mode ---------------- */
   function enterFocus() { document.body.classList.add('focus-mode'); $('#editor').focus(); }
   function exitFocus() { document.body.classList.remove('focus-mode'); }
   $('#focusBtn').addEventListener('click', enterFocus);
   $('#focusExit').addEventListener('click', exitFocus);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { exitFocus(); closeGhost(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { exitFocus(); closeGhost(); closeGrammar(); } });
 
   /* ---------------- Idea & Project workspace ----------------
      Jot quick ideas now; turn one into a full writing project later. */

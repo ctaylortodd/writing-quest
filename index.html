@@ -172,6 +172,7 @@
           <div class="editor-actions">
             <button id="focusBtn" class="tool-btn" title="Hide everything but the writing box">🎯 Focus mode</button>
             <button id="readAloudBtn" class="tool-btn" title="Read my writing back to me">🔊 Read it to me</button>
+            <button id="grammarBtn" class="tool-btn" title="Check grammar online (uses the internet)">✔️ Check grammar</button>
             <button id="downloadBtn" class="tool-btn" title="Save my writing as a Word document">⬇️ Save to Word</button>
             <button id="finishBtn" class="primary-btn">I'm finished</button>
           </div>
@@ -231,6 +232,18 @@
 
   <!-- Floating exit button for distraction-free Focus mode -->
   <button id="focusExit" class="primary-btn">✓ Done focusing</button>
+
+  <!-- Grammar check (optional online) overlay -->
+  <div id="grammar" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>✔️ Grammar check</h2>
+        <button id="grammarClose" class="tool-btn" title="Close">✕ Close</button>
+      </div>
+      <p class="subtle">This sends your writing to a free online checker (LanguageTool) to find grammar &amp; spelling tips. It needs the internet, and your writing isn't saved by the checker.</p>
+      <div id="grammarBody"></div>
+    </div>
+  </div>
 
   <!-- Ghostwriter (writer's-block helper) overlay -->
   <div id="ghost" class="modal" hidden>
